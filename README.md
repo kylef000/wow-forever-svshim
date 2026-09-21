@@ -13,12 +13,14 @@ The WoW Forever (1.60.x) beta client **saves** addon settings when you `/reload`
 
 ## Install
 
-1. Download this repo: **Code → Download ZIP** on GitHub. You can also run `git clone https://github.com/kylef000/wow-forever-svshim.git "!!SVShim"`.
-2. Put it in your AddOns folder, for example:
+1. Go to [**Releases**](https://github.com/kylef000/wow-forever-svshim/releases/latest) and download **`SVShim-v<version>.zip`**. Don't use the green **Code → Download ZIP** button, because that folder would need renaming.
+2. Extract it into your AddOns folder, for example:
    ```
-   C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\!!SVShim
+   C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns
    ```
-3. **Name the folder exactly `!!SVShim`.** A downloaded ZIP unpacks as `wow-forever-svshim-main`, so rename it. The `!!` makes it load before your other addons.
+   The ZIP already contains a folder named `!!SVShim`. The `!!` makes it load before your other addons.
+
+If you use git, `git clone https://github.com/kylef000/wow-forever-svshim.git "!!SVShim"` inside `AddOns` works too.
 
 The folder should look like this:
 
@@ -73,6 +75,10 @@ powershell -ExecutionPolicy Bypass -File tools\sync.ps1 -Watch -Account YOURACCO
 - **The script has to be running** for new changes to carry over.
 - `Data\` and `Data.xml` hold **your personal settings**. They're gitignored, so don't share them unless you mean to.
 
+## Update
+
+Close the Start-SVShim window. Download the latest release and extract it over the old folder, replacing files when asked. Your settings data isn't in the ZIP, so it's kept. Then start `Start-SVShim.cmd` again.
+
 ## Uninstall
 
 Close the script window and delete the `!!SVShim` folder. Your settings in `WTF` aren't touched.
@@ -83,5 +89,5 @@ Close the script window and delete the `!!SVShim` folder. Your settings in `WTF`
 |---|---|
 | `SVShim nothing to restore` | Start `Start-SVShim.cmd`, then `/reload`. |
 | `SVShim skipped <realm>/<name>: this character name exists on several realms…` | You have characters with the same name on more than one realm, so their settings can't be matched safely. Open an issue with the full line. |
-| No `SVShim` line in chat at all | Check the folder is named exactly `!!SVShim`, and that it's enabled in the AddOns list at character select. |
+| No `SVShim` line in chat at all | Check the folder is named exactly `!!SVShim` and sits directly in `AddOns` (not `AddOns\!!SVShim\!!SVShim`), and that it's enabled in the AddOns list at character select. |
 | Settings still reset | Check the script window printed a line when you last `/reload`ed. If it didn't, the script wasn't running. |

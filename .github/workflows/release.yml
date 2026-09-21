@@ -1,0 +1,62 @@
+# Tags and releases each new "## Version" in !!SVShim.toc. The release ZIP holds a ready-named
+# !!SVShim folder, so users extract it straight into Interface\AddOns.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.toc'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from the TOC
+        id: version
+        run: |
+          version=$(sed -n 's/^## Version: *//p' '!!SVShim.toc' | tr -d '\r[:space:]')
+          if [ -z "$version" ]; then
+            echo "::error::No '## Version:' line in !!SVShim.toc"
+            exit 1
+          fi
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "v$version is already released; nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the ZIP
+        if: steps.version.outputs.exists == 'false'
+        run: git archive --format=zip --prefix='!!SVShim/' -o "SVShim-${{ steps.version.outputs.tag }}.zip" HEAD
+
+      - name: Create the tag and release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          notes=$(printf '%s\n' \
+            '## Install' \
+            '' \
+            "1. Download **SVShim-$TAG.zip** below." \
+            '2. Extract it into `World of Warcraft\_classic_beta_\Interface\AddOns`. It already contains the `!!SVShim` folder, so there is nothing to rename.' \
+            '3. Double-click `AddOns\!!SVShim\Start-SVShim.cmd` and leave it open while you play.' \
+            '' \
+            'Updating: close the Start-SVShim window, extract over the old folder, and start it again.')
+          gh release create "$TAG" "SVShim-$TAG.zip" \
+            --target "$GITHUB_SHA" \
+            --title "!!SVShim $TAG" \
+            --notes "$notes" \
+            --generate-notes
