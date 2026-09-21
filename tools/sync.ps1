@@ -67,16 +67,22 @@ function Build {
 
     foreach ($file in Get-SavedVariableFiles (Join-Path $Source 'SavedVariables')) {
         $body = [IO.File]::ReadAllText($file.FullName, $utf8)
-        $files["A_$(ConvertTo-FileName $file.BaseName).lua"] = "$body`nSVShim.account = SVShim.account + 1`n"
+        $files["A_$(ConvertTo-FileName $file.BaseName).lua"] = "SVShim.Register(`"$($file.BaseName)`", function()`n$body`nend)`n"
     }
 
-    foreach ($realm in Get-ChildItem -LiteralPath $Source -Directory | Where-Object Name -ne 'SavedVariables') {
-        foreach ($character in Get-ChildItem -LiteralPath $realm.FullName -Directory) {
-            foreach ($file in Get-SavedVariableFiles (Join-Path $character.FullName 'SavedVariables')) {
-                $body = [IO.File]::ReadAllText($file.FullName, $utf8)
-                $name = "C_$(ConvertTo-FileName $realm.Name)_$(ConvertTo-FileName $character.Name)_$(ConvertTo-FileName $file.BaseName).lua"
-                $files[$name] = "if SVShim.Match(`"$($realm.Name)`", `"$($character.Name)`") then`n$body`nSVShim.character = SVShim.character + 1`nend`n"
-            }
+    $characters = @(Get-ChildItem -LiteralPath $Source -Directory | Where-Object Name -ne 'SavedVariables' |
+        ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Directory } |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SavedVariables') })
+    # Realm folder names can't be matched in game, so a name that appears under one realm only is matched by name.
+    $realmCount = $characters | Group-Object Name -AsHashTable
+
+    foreach ($character in $characters) {
+        $realm  = $character.Parent.Name
+        $unique = if ($realmCount[$character.Name].Count -eq 1) { 'true' } else { 'false' }
+        foreach ($file in Get-SavedVariableFiles (Join-Path $character.FullName 'SavedVariables')) {
+            $body = [IO.File]::ReadAllText($file.FullName, $utf8)
+            $name = "C_$(ConvertTo-FileName $realm)_$(ConvertTo-FileName $character.Name)_$(ConvertTo-FileName $file.BaseName).lua"
+            $files[$name] = "SVShim.Register(`"$($file.BaseName)`", function()`n$body`nend, `"$realm`", `"$($character.Name)`", $unique)`n"
         }
     }
 
@@ -97,8 +103,8 @@ if (-not $Watch) { return }
 $watcher = New-Object IO.FileSystemWatcher $wtfAccount
 $watcher.IncludeSubdirectories = $true
 $watcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite, Size'
-foreach ($event in 'Changed', 'Created', 'Renamed') {
-    Register-ObjectEvent -InputObject $watcher -EventName $event -SourceIdentifier "SVShim$event" | Out-Null
+foreach ($eventName in 'Changed', 'Created', 'Renamed') {
+    Register-ObjectEvent -InputObject $watcher -EventName $eventName -SourceIdentifier "SVShim$eventName" | Out-Null
 }
 $watcher.EnableRaisingEvents = $true
 Write-Host "Watching $wtfAccount - leave this window open while you play."

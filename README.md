@@ -37,10 +37,10 @@ AddOns\!!SVShim\
 1. Double-click **`Start-SVShim.cmd`** in the `!!SVShim` folder. A window opens and says `Watching ...`. **Leave it open** while you play.
 2. Play as normal. Each time the game saves (`/reload`, logout or exit), the window prints a line. That means your settings were copied.
 
-On login you'll see this in chat:
+On login you'll see a line like this in chat. The numbers depend on which addons you have enabled:
 
 ```
-SVShim restored 16 account and 10 character settings files.
+SVShim restored 13 account and 7 character settings files.
 ```
 
 **First time only:** set your addons up the way you like them, then `/reload` once. From then on they stick.
@@ -63,7 +63,8 @@ powershell -ExecutionPolicy Bypass -File tools\sync.ps1 -Watch -Account YOURACCO
 
 - The client writes each addon's settings to `WTF\Account\<account>\SavedVariables\<Addon>.lua`. Per-character settings go to `WTF\Account\<account>\<realm>\<character>\SavedVariables\`. Those files are valid Lua, for example `LeaPlusDB = { ... }`.
 - [`tools/sync.ps1`](tools/sync.ps1) watches those folders. After each save it copies every addon's file into `!!SVShim\Data\` and lists them in `Data.xml`.
-- `!!SVShim` loads first. Running those files puts each addon's settings back into place before the addon itself starts. Per-character files only apply to the character they came from.
+- `!!SVShim` loads first. It restores each addon's settings at that addon's `ADDON_LOADED` event, which is when the client would normally do it, so addons that set defaults while loading don't overwrite them. It also restores them once earlier, for addons that read their settings while loading (`LoadSavedVariablesFirst`).
+- Per-character files only apply to the character they came from. The beta names realm folders with numbers that don't match anything visible in game, so characters are matched by name. If the same name exists on two realms, the shim skips it rather than risk applying the wrong settings.
 - When the game saves, it writes the (restored) settings back to `WTF` as usual, and the script copies them again.
 
 ## Limitations
@@ -81,6 +82,6 @@ Close the script window and delete the `!!SVShim` folder. Your settings in `WTF`
 | You see | Do this |
 |---|---|
 | `SVShim nothing to restore` | Start `Start-SVShim.cmd`, then `/reload`. |
-| `SVShim skipped <realm>/<name>: realm didn't match` | Open an issue with that full line. The beta names realm folders by number, and yours may differ. |
+| `SVShim skipped <realm>/<name>: this character name exists on several realms…` | You have characters with the same name on more than one realm, so their settings can't be matched safely. Open an issue with the full line. |
 | No `SVShim` line in chat at all | Check the folder is named exactly `!!SVShim`, and that it's enabled in the AddOns list at character select. |
 | Settings still reset | Check the script window printed a line when you last `/reload`ed. If it didn't, the script wasn't running. |
