@@ -1,6 +1,10 @@
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function()
+	if SVShim.clientLoads then
+		print("|cff33ff99SVShim|r the game is loading addon settings again, so SVShim did nothing this session. You can close Start-SVShim and delete the !!SVShim folder.")
+		return
+	end
 	print(("|cff33ff99SVShim|r restored %d account and %d character settings files."):format(SVShim.account, SVShim.character))
 	if SVShim.account + SVShim.character == 0 then
 		print("|cff33ff99SVShim|r nothing to restore. Start Start-SVShim.cmd (in the !!SVShim folder), then /reload.")

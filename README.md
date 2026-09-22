@@ -4,7 +4,7 @@ The WoW Forever (1.60.x) beta client **saves** addon settings when you `/reload`
 
 !!SVShim works around this. A small script copies your saved settings into the addon folder as code. The client still loads addon code, so your settings come back.
 
-> This is a workaround for a beta bug. Once Blizzard fixes it, delete the `!!SVShim` folder and stop using the script.
+> This is a workaround for a beta bug. When Blizzard fixes it, the shim notices and tells you in chat that it can be removed. See [After Blizzard fixes the bug](#after-blizzard-fixes-the-bug).
 
 ## What you need
 
@@ -68,12 +68,23 @@ powershell -ExecutionPolicy Bypass -File tools\sync.ps1 -Watch -Account YOURACCO
 - `!!SVShim` loads first. It restores each addon's settings at that addon's `ADDON_LOADED` event, which is when the client would normally do it, so addons that set defaults while loading don't overwrite them. It also restores them once earlier, for addons that read their settings while loading (`LoadSavedVariablesFirst`).
 - Per-character files only apply to the character they came from. The beta names realm folders with numbers that don't match anything visible in game, so characters are matched by name. If the same name exists on two realms, the shim skips it rather than risk applying the wrong settings.
 - When the game saves, it writes the (restored) settings back to `WTF` as usual, and the script copies them again.
+- `!!SVShim` keeps one small saved variable of its own, `SVShimState`, as a canary. The script never copies it, so if it comes back at login, the client must have loaded it itself. The shim then stops restoring anything.
 
 ## Limitations
 
 - **Blizzard's own UI settings aren't restored.** Examples are the combat log and the client's own saved settings. Blizzard's addons load before any other addon can run.
 - **The script has to be running** for new changes to carry over.
 - `Data\` and `Data.xml` hold **your personal settings**. They're gitignored, so don't share them unless you mean to.
+
+## After Blizzard fixes the bug
+
+When the client loads saved settings again, the shim stops restoring its copies, and you see this at login:
+
+```
+SVShim the game is loading addon settings again, so SVShim did nothing this session. You can close Start-SVShim and delete the !!SVShim folder.
+```
+
+This stops an outdated copy from rolling back your real settings, even if you've stopped running the script. It takes one session to kick in, because the canary has to be saved once after the fix.
 
 ## Update
 

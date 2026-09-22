@@ -29,6 +29,8 @@ end
 -- per-character files. It runs once now, for addons that read their settings while their files
 -- load (LoadSavedVariablesFirst), and again at the addon's ADDON_LOADED, which is when the client
 -- normally restores them, so file-level defaults like `NecrosisConfig = {}` don't wipe them.
+-- Once the client loads SavedVariables itself (SVShim.clientLoads), the early copy is harmless:
+-- the client overwrites it with the real file when each addon loads, and the second apply is skipped.
 function SVShim.Register(addon, apply, realm, character, unique)
 	local isCharacter = realm ~= nil
 	if isCharacter and not SVShim.Match(realm, character, unique) then
@@ -44,6 +46,17 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(_, _, addon)
+	-- SVShimState is this addon's own saved variable (see the TOC), rewritten every session.
+	-- tools/sync.ps1 never copies it into Data, so it's only set here if the client loaded it,
+	-- which means SavedVariables work again and every addon gets its real settings from WTF.
+	if addon == "!!SVShim" then
+		SVShim.clientLoads = SVShimState ~= nil
+		SVShimState = { lastSession = time() }
+		if SVShim.clientLoads then
+			SVShim.pending = {}
+		end
+		return
+	end
 	local entries = SVShim.pending[addon]
 	if not entries then
 		return
