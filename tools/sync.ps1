@@ -62,12 +62,20 @@ function Write-Atomic([string]$path, [string]$text) {
     Move-Item -LiteralPath "$path.tmp" -Destination $path -Force
 }
 
+# Wraps a SavedVariables file in SVShim.Register(addon, {globals}, function() ... end, ...).
+# Core.lua adds a ["__svshim"] = true marker to each table just before the game saves; stripping
+# it here means only a table the game itself loaded from WTF carries it.
+function ConvertTo-Registration([IO.FileInfo]$file, [string]$extraArgs) {
+    $body = [IO.File]::ReadAllText($file.FullName, $utf8) -replace '(?m)^\["__svshim"\] = true,\r?\n', ''
+    $names = [regex]::Matches($body, '(?m)^([A-Za-z_][A-Za-z0-9_]*) = ') | ForEach-Object { "`"$($_.Groups[1].Value)`"" }
+    "SVShim.Register(`"$($file.BaseName)`", {$($names -join ', ')}, function()`n$body`nend$extraArgs)`n"
+}
+
 function Build {
     $files = [ordered]@{}
 
     foreach ($file in Get-SavedVariableFiles (Join-Path $Source 'SavedVariables')) {
-        $body = [IO.File]::ReadAllText($file.FullName, $utf8)
-        $files["A_$(ConvertTo-FileName $file.BaseName).lua"] = "SVShim.Register(`"$($file.BaseName)`", function()`n$body`nend)`n"
+        $files["A_$(ConvertTo-FileName $file.BaseName).lua"] = ConvertTo-Registration $file ''
     }
 
     $characters = @(Get-ChildItem -LiteralPath $Source -Directory | Where-Object Name -ne 'SavedVariables' |
@@ -80,9 +88,8 @@ function Build {
         $realm  = $character.Parent.Name
         $unique = if ($realmCount[$character.Name].Count -eq 1) { 'true' } else { 'false' }
         foreach ($file in Get-SavedVariableFiles (Join-Path $character.FullName 'SavedVariables')) {
-            $body = [IO.File]::ReadAllText($file.FullName, $utf8)
             $name = "C_$(ConvertTo-FileName $realm)_$(ConvertTo-FileName $character.Name)_$(ConvertTo-FileName $file.BaseName).lua"
-            $files[$name] = "SVShim.Register(`"$($file.BaseName)`", function()`n$body`nend, `"$realm`", `"$($character.Name)`", $unique)`n"
+            $files[$name] = ConvertTo-Registration $file ", `"$realm`", `"$($character.Name)`", $unique"
         }
     }
 

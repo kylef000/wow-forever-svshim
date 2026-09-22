@@ -68,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File tools\sync.ps1 -Watch -Account YOURACCO
 - `!!SVShim` loads first. It restores each addon's settings at that addon's `ADDON_LOADED` event, which is when the client would normally do it, so addons that set defaults while loading don't overwrite them. It also restores them once earlier, for addons that read their settings while loading (`LoadSavedVariablesFirst`).
 - Per-character files only apply to the character they came from. The beta names realm folders with numbers that don't match anything visible in game, so characters are matched by name. If the same name exists on two realms, the shim skips it rather than risk applying the wrong settings.
 - When the game saves, it writes the (restored) settings back to `WTF` as usual, and the script copies them again.
-- `!!SVShim` keeps one small saved variable of its own, `SVShimState`, as a canary. The script never copies it, so if it comes back at login, the client must have loaded it itself. The shim then stops restoring anything.
+- The client loads *some* settings files and skips others, so the shim decides file by file. Just before each save, it adds a marker key, `__svshim`, to every settings table it manages. The script strips the marker from its copies. At login, a table that still has the marker must have been loaded by the game itself, so the shim leaves it alone and removes the marker. Otherwise the shim restores its copy.
 
 ## Limitations
 
@@ -78,13 +78,15 @@ powershell -ExecutionPolicy Bypass -File tools\sync.ps1 -Watch -Account YOURACCO
 
 ## After Blizzard fixes the bug
 
-When the client loads saved settings again, the shim stops restoring its copies, and you see this at login:
+When the client loads your settings files again, the shim sees its marker in every file and restores nothing, and you see this at login:
 
 ```
-SVShim the game is loading addon settings again, so SVShim did nothing this session. You can close Start-SVShim and delete the !!SVShim folder.
+SVShim the game loaded all 13 settings files itself this session. If you see this every login, Blizzard has fixed the bug and you can close Start-SVShim and delete the !!SVShim folder.
 ```
 
-This stops an outdated copy from rolling back your real settings, even if you've stopped running the script. It takes one session to kick in, because the canary has to be saved once after the fix.
+This also means an outdated copy never overwrites settings the game loaded itself, even if you've stopped running the script.
+
+While the bug is still around, a second line may list a few addons the game did load itself, for example `SVShim the game loaded these itself: HidingBar, WaypointUI`. That's expected: the client skips most files, not all of them.
 
 ## Update
 

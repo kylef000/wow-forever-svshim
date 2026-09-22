@@ -1,12 +1,17 @@
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function()
-	if SVShim.clientLoads then
-		print("|cff33ff99SVShim|r the game is loading addon settings again, so SVShim did nothing this session. You can close Start-SVShim and delete the !!SVShim folder.")
+	local restored = SVShim.account + SVShim.character
+	local byGame = #SVShim.loadedByGame
+	if restored == 0 and byGame > 0 then
+		print(("|cff33ff99SVShim|r the game loaded all %d settings files itself this session. If you see this every login, Blizzard has fixed the bug and you can close Start-SVShim and delete the !!SVShim folder."):format(byGame))
 		return
 	end
 	print(("|cff33ff99SVShim|r restored %d account and %d character settings files."):format(SVShim.account, SVShim.character))
-	if SVShim.account + SVShim.character == 0 then
+	if byGame > 0 then
+		print(("|cff33ff99SVShim|r the game loaded these itself: %s"):format(table.concat(SVShim.loadedByGame, ", ")))
+	end
+	if restored == 0 then
 		print("|cff33ff99SVShim|r nothing to restore. Start Start-SVShim.cmd (in the !!SVShim folder), then /reload.")
 	end
 	if #SVShim.skipped > 0 then
