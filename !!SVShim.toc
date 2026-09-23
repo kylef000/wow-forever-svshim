@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: !!SVShim
 ## Notes: Restores addon settings the beta client fails to load. Run Start-SVShim.cmd while playing.
-## Version: 1.1.1
+## Version: 1.1.2
 
 Core.lua
 Data.xml

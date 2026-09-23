@@ -1,5 +1,7 @@
 # !!SVShim: keep your addon settings in the WoW Forever beta
 
+[![VirusTotal scan](https://img.shields.io/badge/VirusTotal-scanned%20on%20release-3178C6?logo=virustotal&logoColor=white)](https://github.com/kylef000/wow-forever-svshim/releases/latest)
+
 The WoW Forever (1.60.x) beta client **saves** addon settings when you `/reload` or log out, but it **never loads them** again. Every login, your addons start from their defaults, and the next save overwrites your settings with those defaults.
 
 !!SVShim works around this. A small script copies your saved settings into the addon folder as code. The client still loads addon code, so your settings come back.

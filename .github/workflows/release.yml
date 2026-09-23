@@ -41,12 +41,23 @@ jobs:
         if: steps.version.outputs.exists == 'false'
         run: git archive --format=zip --prefix='!!SVShim/' -o "SVShim-${{ steps.version.outputs.tag }}.zip" HEAD
 
+      - name: Scan the ZIP with VirusTotal
+        if: steps.version.outputs.exists == 'false'
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v5
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: |
+            SVShim-${{ steps.version.outputs.tag }}.zip
+
       - name: Create the tag and release
         if: steps.version.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
+          VT_ANALYSIS: ${{ steps.virustotal.outputs.analysis }}
         run: |
+          vt_url="${VT_ANALYSIS#*=}"
           notes=$(printf '%s\n' \
             '## Install' \
             '' \
@@ -54,7 +65,9 @@ jobs:
             '2. Extract it into `World of Warcraft\_classic_beta_\Interface\AddOns`. It already contains the `!!SVShim` folder, so there is nothing to rename.' \
             '3. Double-click `AddOns\!!SVShim\Start-SVShim.cmd` and leave it open while you play.' \
             '' \
-            'Updating: close the Start-SVShim window, extract over the old folder, and start it again.')
+            'Updating: close the Start-SVShim window, extract over the old folder, and start it again.' \
+            '' \
+            "[VirusTotal scan of this ZIP]($vt_url)")
           gh release create "$TAG" "SVShim-$TAG.zip" \
             --target "$GITHUB_SHA" \
             --title "!!SVShim $TAG" \
