@@ -21,7 +21,9 @@ $addonsDir = Split-Path $addonDir -Parent
 $gameDir   = Split-Path (Split-Path $addonsDir -Parent) -Parent
 $accounts  = Join-Path $gameDir 'WTF\Account'
 $dataDir   = Join-Path $addonDir 'Data'
-$utf8      = New-Object Text.UTF8Encoding $false
+# Latin-1 maps every byte to one char and back, so binary blobs in SavedVariables (e.g.
+# Auctionator's price database) survive the copy; UTF-8 would mangle invalid sequences.
+$raw       = [Text.Encoding]::GetEncoding(28591)
 
 if ($addonName -ne '!!SVShim') {
     Write-Warning "This folder is named '$addonName'. Rename it to '!!SVShim' so it loads before your other addons."
@@ -55,18 +57,40 @@ function Get-SavedVariableFiles([string]$dir) {
 
 function ConvertTo-FileName([string]$text) { $text -replace '[^A-Za-z0-9_!-]', '_' }
 
-# Write through a temp file so the client never reads a half-written file.
+# Write through a temp file so the client never reads a half-written file. A /reload saves, this
+# rebuilds, and the client reads Data moments later, so the swap has to be atomic: File.Replace
+# swaps in one step, where Move-Item -Force deletes first and leaves a gap the client can hit.
 function Write-Atomic([string]$path, [string]$text) {
-    if ((Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path, $utf8) -ceq $text) { return }
-    [IO.File]::WriteAllText("$path.tmp", $text, $utf8)
-    Move-Item -LiteralPath "$path.tmp" -Destination $path -Force
+    if ((Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path, $raw) -ceq $text) { return }
+    $temp = "$path.tmp"
+    [IO.File]::WriteAllText($temp, $text, $raw)
+    if (-not (Test-Path -LiteralPath $path)) {
+        [IO.File]::Move($temp, $path)
+        return
+    }
+    # [NullString]::Value, not $null: PowerShell turns $null into "", which Replace rejects.
+    foreach ($attempt in 1..10) {
+        try {
+            [IO.File]::Replace($temp, $path, [NullString]::Value)
+            return
+        } catch [IO.IOException] {
+            # The client is reading this file right now; it releases it in milliseconds.
+            Start-Sleep -Milliseconds 30
+        }
+    }
+    try {
+        Move-Item -LiteralPath $temp -Destination $path -Force
+    } catch {
+        Write-Warning "Could not replace $path; it stays at the previous version until the next save."
+        Remove-Item -LiteralPath $temp -ErrorAction SilentlyContinue
+    }
 }
 
 # Wraps a SavedVariables file in SVShim.Register(addon, {globals}, function() ... end, ...).
-# Core.lua adds a ["__svshim"] = true marker to each table just before the game saves; stripping
-# it here means only a table the game itself loaded from WTF carries it.
+# Versions up to 1.1.2 wrote a ["__svshim"] = true marker into each table before the game saved it.
+# That leaked into other addons' settings, so it's gone; this strips any left in WTF from back then.
 function ConvertTo-Registration([IO.FileInfo]$file, [string]$extraArgs) {
-    $body = [IO.File]::ReadAllText($file.FullName, $utf8) -replace '(?m)^\["__svshim"\] = true,\r?\n', ''
+    $body = [IO.File]::ReadAllText($file.FullName, $raw) -replace '(?m)^\["__svshim"\] = true,\r?\n', ''
     $names = [regex]::Matches($body, '(?m)^([A-Za-z_][A-Za-z0-9_]*) = ') | ForEach-Object { "`"$($_.Groups[1].Value)`"" }
     "SVShim.Register(`"$($file.BaseName)`", {$($names -join ', ')}, function()`n$body`nend$extraArgs)`n"
 }

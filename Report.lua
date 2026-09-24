@@ -9,7 +9,15 @@ frame:SetScript("OnEvent", function()
 	end
 	print(("|cff33ff99SVShim|r restored %d account and %d character settings files."):format(SVShim.account, SVShim.character))
 	if byGame > 0 then
-		print(("|cff33ff99SVShim|r the game loaded these itself: %s"):format(table.concat(SVShim.loadedByGame, ", ")))
+		-- An addon with both account and character settings is listed once per file.
+		local seen, names = {}, {}
+		for _, name in ipairs(SVShim.loadedByGame) do
+			if not seen[name] then
+				seen[name] = true
+				names[#names + 1] = name
+			end
+		end
+		print(("|cff33ff99SVShim|r the game loaded these itself: %s"):format(table.concat(names, ", ")))
 	end
 	if restored == 0 then
 		print("|cff33ff99SVShim|r nothing to restore. Start Start-SVShim.cmd (in the !!SVShim folder), then /reload.")
