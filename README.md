@@ -2,6 +2,8 @@
 
 [![VirusTotal scan](https://img.shields.io/badge/VirusTotal-scanned%20on%20release-3178C6?logo=virustotal&logoColor=white)](https://github.com/kylef000/wow-forever-svshim/releases/latest)
 
+> **Fixed as of 2026-09-25.** Blizzard has fixed the underlying bug — the beta client loads SavedVariables normally again. This addon is no longer needed. It will still tell you so itself in chat (see [After Blizzard fixes the bug](#after-blizzard-fixes-the-bug)); once you see that message every login, close `Start-SVShim.cmd` and delete the `!!SVShim` folder. This repo is archived and kept only for anyone still on an older client build.
+
 The WoW Forever (1.60.x) beta client **saves** addon settings when you `/reload` or log out, but it **never loads them** again. Every login, your addons start from their defaults, and the next save overwrites your settings with those defaults.
 
 !!SVShim works around this. A small script copies your saved settings into the addon folder as code. The client still loads addon code, so your settings come back.
